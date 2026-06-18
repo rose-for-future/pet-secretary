@@ -8,3 +8,7 @@ dist/
 docs/
 桌面宠物秘书_开发规格书.md
 桌面宠物秘书_方案与报价.md
+
+# 实验素材（狗帧等）：本地保留，暂不上传
+src/renderer/public/pet/dog_generated/
+assets/
