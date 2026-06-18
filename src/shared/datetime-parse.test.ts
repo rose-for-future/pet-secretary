@@ -56,6 +56,25 @@ describe('absolute time phrases', () => {
   })
 })
 
+// ─── 午夜说法（chrono 处理不好，需归一化）─────────────────────────────────────
+describe('午夜 / 24点 归一化', () => {
+  // now = 2026-06-18 10:00 CST，次日零点 = 2026-06-19 00:00 CST = 2026-06-18T16:00:00Z
+  const nextMidnight = Date.UTC(2026, 5, 18, 16, 0, 0)
+  for (const phrase of ['今天二十四点', '二十四点', '24点', '今天24点', '晚上12点', '今晚12点', '今天晚上12点', '半夜12点']) {
+    it(`${phrase} → 次日0点`, () => {
+      const r = parseWhen(phrase, now, 'Asia/Shanghai')
+      expect(r, phrase).not.toBeNull()
+      expect(r!.eventTimeUtc, phrase).toBe(nextMidnight)
+    })
+  }
+  it('中午12点 仍是当天中午（不要误判成午夜）', () => {
+    // 2026-06-18 12:00 CST = 2026-06-18T04:00:00Z
+    const r = parseWhen('中午12点', now, 'Asia/Shanghai')
+    expect(r).not.toBeNull()
+    expect(r!.eventTimeUtc).toBe(Date.UTC(2026, 5, 18, 4, 0, 0))
+  })
+})
+
 // ─── Lead extraction ──────────────────────────────────────────────────────────
 
 describe('lead extraction', () => {

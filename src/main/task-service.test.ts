@@ -28,6 +28,50 @@ describe('TaskService.add', () => {
   })
 })
 
+describe('TaskService.patch（分别改事件/提醒时间）', () => {
+  const mk = (): { svc: TaskService; id: string } => {
+    const svc = new TaskService([], deps(Date.UTC(2026, 5, 18, 0, 0, 0)))
+    const t = svc.add({ title: '开会', eventLocalDate: '2026-06-18', eventLocalTime: '15:00', leadMinutes: 10 })
+    return { svc, id: t.id }
+  }
+
+  test('只改提醒时间，事件时间不动', () => {
+    const { svc, id } = mk()
+    const eventBefore = svc.list()[0].eventTimeUtc
+    svc.patch(id, { reminderTimeUtc: Date.UTC(2026, 5, 18, 6, 0, 0) })
+    const t = svc.list()[0]
+    expect(t.reminderTimeUtc).toBe(Date.UTC(2026, 5, 18, 6, 0, 0))
+    expect(t.eventTimeUtc).toBe(eventBefore) // 事件时间保持
+  })
+
+  test('只改事件时间，提醒时间不动', () => {
+    const { svc, id } = mk()
+    const reminderBefore = svc.list()[0].reminderTimeUtc
+    svc.patch(id, { eventTimeUtc: Date.UTC(2026, 5, 18, 9, 0, 0) })
+    const t = svc.list()[0]
+    expect(t.eventTimeUtc).toBe(Date.UTC(2026, 5, 18, 9, 0, 0))
+    expect(t.reminderTimeUtc).toBe(reminderBefore) // 提醒时间保持
+  })
+
+  test('只改标题，两个时间都不动', () => {
+    const { svc, id } = mk()
+    const { eventTimeUtc, reminderTimeUtc } = svc.list()[0]
+    svc.patch(id, { title: '喝水' })
+    const t = svc.list()[0]
+    expect(t.title).toBe('喝水')
+    expect(t.eventTimeUtc).toBe(eventTimeUtc)
+    expect(t.reminderTimeUtc).toBe(reminderTimeUtc)
+  })
+
+  test('patch 后重新进入待提醒（清掉已提醒标记）', () => {
+    const { svc, id } = mk()
+    svc.markFired(id, Date.UTC(2026, 5, 18, 1, 0, 0))
+    svc.patch(id, { title: 'x' })
+    expect(svc.list()[0].lastFiredAtUtc).toBeNull()
+    expect(svc.list()[0].status).toBe('pending')
+  })
+})
+
 describe('TaskService 状态变更', () => {
   test('complete 把状态置为 done', () => {
     const svc = new TaskService([], deps(0))

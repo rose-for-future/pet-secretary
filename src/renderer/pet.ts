@@ -8,8 +8,10 @@ declare global {
 
 const api = window.api
 const IDLE_COUNT = 121
+const HEAD_COUNT = 192
 const FPS = 24
 const BASE = './pet/cat_british/idle/'
+const HEAD_BASE = './pet/cat_british/head360/'
 
 const cat = document.getElementById('cat') as HTMLImageElement
 const bubble = document.getElementById('pet-bubble') as HTMLDivElement
@@ -24,12 +26,37 @@ for (let i = 0; i < IDLE_COUNT; i++) {
   img.src = `${BASE}${pad(i)}.png`
   frames.push(img)
 }
+// head360：头朝各方向看的一圈帧，用于跟随鼠标
+const headFrames: HTMLImageElement[] = []
+for (let i = 0; i < HEAD_COUNT; i++) {
+  const img = new Image()
+  img.src = `${HEAD_BASE}${pad(i)}.png`
+  headFrames.push(img)
+}
 cat.src = frames[0].src
+
+// 跟随鼠标：主进程按鼠标方向推来目标头部帧号（-1=不跟随）。
+let lookTarget = -1
+let curHead = 0
+api.onPetLook((f) => { lookTarget = f })
+
+// 在 192 帧的环上从 cur 朝 target 走最短路径，每次最多 step 帧 → 转头平滑不突跳。
+function stepToward(cur: number, target: number, step: number): number {
+  let d = (target - cur + HEAD_COUNT) % HEAD_COUNT
+  if (d > HEAD_COUNT / 2) d -= HEAD_COUNT
+  const move = Math.max(-step, Math.min(step, d))
+  return (cur + move + HEAD_COUNT) % HEAD_COUNT
+}
 
 let frame = 0
 setInterval(() => {
-  frame = (frame + 1) % IDLE_COUNT
-  cat.src = frames[frame].src
+  if (lookTarget >= 0 && lookTarget < HEAD_COUNT) {
+    curHead = stepToward(curHead, lookTarget, 6)
+    cat.src = headFrames[curHead].src
+  } else {
+    frame = (frame + 1) % IDLE_COUNT
+    cat.src = frames[frame].src
+  }
 }, 1000 / FPS)
 
 // 拖动 vs 点击：移动很小算点击（切换语音），否则算拖动
@@ -77,7 +104,7 @@ speechSynthesis.getVoices()
 let bubbleTimer: ReturnType<typeof setTimeout> | undefined
 api.onReminder((p: ReminderPayload) => {
   const text = `${p.title}${p.note ? '，' + p.note : ''}`
-  bubbleText.textContent = '⏰ ' + text
+  bubbleText.textContent = text
   bubble.classList.remove('hidden')
   clearTimeout(bubbleTimer)
   bubbleTimer = setTimeout(() => bubble.classList.add('hidden'), 10000)
@@ -141,7 +168,7 @@ function playPcm24k(b64: string): void {
 async function startListening(): Promise<void> {
   if (capturing) return
   capturing = true
-  bubbleText.textContent = '🎤 在听…（再点我一下结束对话）'
+  bubbleText.textContent = '在听…（再点我一下结束对话）'
   bubble.classList.remove('hidden')
   clearTimeout(bubbleTimer)
   ensurePlayCtx() // 趁点猫这次手势把播放上下文 resume，回话才出得了声

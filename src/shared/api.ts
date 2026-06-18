@@ -40,4 +40,6 @@ export interface Api {
   onCatText(cb: (text: string) => void): void
   onVoiceError(cb: (msg: string) => void): void
   onNoteRefresh(cb: () => void): void
+  /** 主进程按鼠标方向推来的头部帧号（0..191）；-1 表示不跟随、回到待机动画。 */
+  onPetLook(cb: (frame: number) => void): void
 }

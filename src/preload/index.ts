@@ -26,7 +26,8 @@ const api: Api = {
   onCatAudio: (cb: (b64: string) => void): void => { ipcRenderer.on('cat:audio', (_e, b64: string) => cb(b64)) },
   onCatText: (cb: (text: string) => void): void => { ipcRenderer.on('cat:text', (_e, t: string) => cb(t)) },
   onVoiceError: (cb: (msg: string) => void): void => { ipcRenderer.on('voice:error', (_e, m: string) => cb(m)) },
-  onNoteRefresh: (cb: () => void): void => { ipcRenderer.on('note:refresh', () => cb()) }
+  onNoteRefresh: (cb: () => void): void => { ipcRenderer.on('note:refresh', () => cb()) },
+  onPetLook: (cb: (frame: number) => void): void => { ipcRenderer.on('pet:look', (_e, frame: number) => cb(frame)) }
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -31,6 +31,14 @@ function fmtFull(utcMs: number | null): string {
 function statusLabel(s: Task['status']): string {
   return { pending: '待办', done: '已完成', snoozed: '已推迟', expired: '已过期' }[s]
 }
+/** 列表里那一行的时间：事件与提醒不同就两个都显示，否则显示单个时间。 */
+function timesLabel(t: Task): string {
+  const ev = t.eventTimeUtc
+  const rem = t.reminderTimeUtc
+  if (ev != null && rem != null && ev !== rem) return `提醒 ${fmtShort(rem)} · 事件 ${fmtShort(ev)}`
+  const single = rem ?? ev
+  return single != null ? fmtShort(single) : '无时间'
+}
 
 async function refresh(): Promise<void> {
   const tasks = await api.listTasks()
@@ -49,15 +57,17 @@ async function refresh(): Promise<void> {
     const fired = t.lastFiredAtUtc != null && t.status === 'pending'
     dot.className = 'dot ' + (fired ? 'fired' : t.status)
 
-    const when = document.createElement('span')
-    when.className = 'row-when'
-    when.textContent = fmtShort(t.reminderTimeUtc)
-
-    const title = document.createElement('span')
+    const main = document.createElement('div')
+    main.className = 'row-main'
+    const title = document.createElement('div')
     title.className = 'row-title'
     title.textContent = t.title
+    const times = document.createElement('div')
+    times.className = 'row-times'
+    times.textContent = timesLabel(t)
+    main.append(title, times)
 
-    li.append(dot, when, title)
+    li.append(dot, main)
     li.addEventListener('click', () => openDetail(t))
     listEl.append(li)
   }

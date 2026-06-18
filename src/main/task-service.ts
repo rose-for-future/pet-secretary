@@ -79,6 +79,25 @@ export class TaskService {
     return t
   }
 
+  /** 按字段单独修改（语音"分别改事件/提醒时间"用）：只动传入的字段，其余保持不变。 */
+  patch(
+    id: string,
+    p: { title?: string; eventTimeUtc?: number | null; reminderTimeUtc?: number | null; leadMinutes?: number }
+  ): Task | null {
+    const t = this.find(id)
+    if (!t) return null
+    if (p.title !== undefined) t.title = p.title
+    if (p.eventTimeUtc !== undefined) t.eventTimeUtc = p.eventTimeUtc
+    if (p.reminderTimeUtc !== undefined) t.reminderTimeUtc = p.reminderTimeUtc
+    if (p.leadMinutes !== undefined) t.leadMinutes = p.leadMinutes
+    // 改过就重新进入待提醒状态，清掉已提醒/推迟标记
+    t.status = 'pending'
+    t.lastFiredAtUtc = null
+    t.snoozeUntilUtc = null
+    t.updatedAt = new Date(this.deps.now()).toISOString()
+    return t
+  }
+
   complete(id: string): void {
     const t = this.find(id)
     if (!t) return
