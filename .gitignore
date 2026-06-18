@@ -1,0 +1,10 @@
+node_modules/
+out/
+dist/
+*.log
+.DS_Store
+
+# 设计/规划/商业文档：本地保留，不上传仓库
+docs/
+桌面宠物秘书_开发规格书.md
+桌面宠物秘书_方案与报价.md

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="./styles.css" />
+    <title>待办清单</title>
+  </head>
+  <body>
+    <div id="titlebar">
+      <span>🐾 待办清单</span>
+      <button id="add-toggle" title="加一条待办">＋</button>
+    </div>
+
+    <div id="main-view">
+      <div id="quick-add" class="hidden">
+        <input id="qa-title" type="text" placeholder="加一条待办…" maxlength="60" />
+        <div class="row">
+          <input id="qa-when" type="text" placeholder="时间，可留空（如 明天8点半）" />
+          <button id="qa-submit">添加</button>
+        </div>
+      </div>
+      <ul id="task-list"></ul>
+      <div id="list-empty" class="empty hidden">还没有待办～<br />对着猫说「提醒我十分钟后开会」就能加一条</div>
+    </div>
+
+    <div id="detail-view" class="hidden">
+      <button id="d-back">‹ 返回</button>
+      <h2 id="d-title"></h2>
+      <p id="d-note"></p>
+      <div id="d-meta"></div>
+      <div class="detail-actions">
+        <button id="d-complete" class="primary">完成</button>
+        <button id="d-snooze">推迟</button>
+        <button id="d-delete">删除</button>
+      </div>
+    </div>
+
+    <script type="module" src="./note.ts"></script>
+  </body>
+</html>

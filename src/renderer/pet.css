@@ -1,0 +1,14 @@
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
+#cat {
+  position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 200px; height: 200px; -webkit-user-drag: none; cursor: grab;
+}
+#cat:active { cursor: grabbing; }
+#pet-bubble {
+  position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+  background: #fff; border: 2px solid #FCE0D2; border-radius: 14px;
+  padding: 7px 11px; font-size: 13px; line-height: 1.4; color: #5A463E;
+  max-width: 200px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.hidden { display: none !important; }
