@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest'
 import { TaskService, type TaskServiceDeps } from './task-service'
 import type { Task, Settings } from '../shared/types'
 
-const settings: Settings = { defaultLeadMinutes: 10, snoozeMinutes: 10, soundEnabled: true, muted: false }
+const settings: Settings = { defaultLeadMinutes: 10, snoozeMinutes: 10, soundEnabled: true, muted: false, omniVoice: 'Sunny' }
 
 function deps(now: number): TaskServiceDeps {
   return { now: () => now, uuid: () => 'fixed-id', timezone: 'Asia/Shanghai', getSettings: () => settings }

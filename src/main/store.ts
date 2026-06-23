@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs'
 import { join } from 'path'
-import type { Task, Settings } from '../shared/types'
+import type { Task, Settings, MemoryItem } from '../shared/types'
 import { DEFAULT_SETTINGS } from '../shared/types'
 
 export class Store {
@@ -8,12 +8,19 @@ export class Store {
 
   private tasksPath(): string { return join(this.baseDir, 'tasks.json') }
   private settingsPath(): string { return join(this.baseDir, 'settings.json') }
+  private memoriesPath(): string { return join(this.baseDir, 'memory.json') }
 
   async loadTasks(): Promise<Task[]> {
     return this.readJson<Task[]>(this.tasksPath(), [])
   }
   async saveTasks(tasks: Task[]): Promise<void> {
     await this.writeJsonAtomic(this.tasksPath(), tasks)
+  }
+  async loadMemories(): Promise<MemoryItem[]> {
+    return this.readJson<MemoryItem[]>(this.memoriesPath(), [])
+  }
+  async saveMemories(memories: MemoryItem[]): Promise<void> {
+    await this.writeJsonAtomic(this.memoriesPath(), memories)
   }
   async loadSettings(): Promise<Settings> {
     return this.readJson<Settings>(this.settingsPath(), DEFAULT_SETTINGS)

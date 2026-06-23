@@ -16,6 +16,8 @@ const api: Api = {
   openNote: (): void => ipcRenderer.send('pet:open-note'),
   petDragStart: (): void => ipcRenderer.send('pet:drag-start'),
   petDragEnd: (): void => ipcRenderer.send('pet:drag-end'),
+  petCatPos: (cx: number, cy: number): void => ipcRenderer.send('pet:cat-pos', cx, cy),
+  petHitRect: (x: number, y: number, w: number, h: number): void => ipcRenderer.send('pet:hit-rect', x, y, w, h),
   petSay: (text: string): void => ipcRenderer.send('pet:say', text),
   onPetBubble: (cb: (text: string) => void): void => {
     ipcRenderer.on('pet:bubble', (_e, text: string) => cb(text))
@@ -25,9 +27,11 @@ const api: Api = {
   voiceStop: (): void => ipcRenderer.send('voice:stop'),
   onCatAudio: (cb: (b64: string) => void): void => { ipcRenderer.on('cat:audio', (_e, b64: string) => cb(b64)) },
   onCatText: (cb: (text: string) => void): void => { ipcRenderer.on('cat:text', (_e, t: string) => cb(t)) },
+  onCatStopAudio: (cb: () => void): void => { ipcRenderer.on('cat:stop-audio', () => cb()) },
   onVoiceError: (cb: (msg: string) => void): void => { ipcRenderer.on('voice:error', (_e, m: string) => cb(m)) },
   onNoteRefresh: (cb: () => void): void => { ipcRenderer.on('note:refresh', () => cb()) },
-  onPetLook: (cb: (frame: number) => void): void => { ipcRenderer.on('pet:look', (_e, frame: number) => cb(frame)) }
+  onPetLook: (cb: (frame: number) => void): void => { ipcRenderer.on('pet:look', (_e, frame: number) => cb(frame)) },
+  onPetSpeak: (cb: (text: string) => void): void => { ipcRenderer.on('pet:speak', (_e, text: string) => cb(text)) }
 }
 
 contextBridge.exposeInMainWorld('api', api)

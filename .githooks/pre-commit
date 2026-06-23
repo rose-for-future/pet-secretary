@@ -1,0 +1,11 @@
+#!/bin/sh
+# 提交前自动跑全量离线测试；挂掉就拦下提交，保证后面的改动不悄悄改坏前面已做的功能。
+# 启用：git config core.hooksPath .githooks（本仓库已配）。临时跳过：git commit --no-verify
+echo "[pre-commit] 跑 npm test ..."
+npm test --silent
+if [ $? -ne 0 ]; then
+  echo "[pre-commit] ❌ 测试未通过，已拦下提交。修好，或确需跳过用：git commit --no-verify"
+  exit 1
+fi
+echo "[pre-commit] ✓ 测试通过，放行提交"
+exit 0

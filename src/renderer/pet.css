@@ -1,14 +1,45 @@
 * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
 html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
+/* 桌宠容器：在全屏透明窗内绝对定位（由 pet.ts 设 left/top），猫+气泡都随它移动。 */
+#pet { position: absolute; width: 200px; height: 200px; }
 #cat {
   position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 200px; height: 200px; -webkit-user-drag: none; cursor: grab;
 }
 #cat:active { cursor: grabbing; }
+/* 气泡锚在猫上方、往上长（bottom 定位）：永远不压到猫，长文字向空白区延展、整段可见。 */
 #pet-bubble {
-  position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+  position: absolute; bottom: 212px; left: 50%; transform: translateX(-50%);
   background: #fff; border: 2px solid #FCE0D2; border-radius: 14px;
-  padding: 7px 11px; font-size: 13px; line-height: 1.4; color: #5A463E;
-  max-width: 200px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  padding: 9px 13px; font-size: 13px; line-height: 1.5; color: #5A463E;
+  width: max-content; max-width: 272px; text-align: center;
+  white-space: normal; word-break: break-word; box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+}
+/* 小尾巴：指向下方的猫 */
+#pet-bubble::after {
+  content: ''; position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%);
+  border: 7px solid transparent; border-top-color: #fff; border-bottom: 0;
+}
+/* 提醒气泡：更醒目、常驻，点一下关掉；闪烁吸引注意 */
+#pet-bubble.reminder {
+  background: #FFF6E0; border-color: #E0A14E; color: #6B4A1A;
+  font-weight: 600; cursor: pointer; box-shadow: 0 3px 14px rgba(224,161,78,0.5);
+  animation: remind-flash 1s ease-in-out infinite;
+}
+@keyframes remind-flash {
+  0%, 100% { box-shadow: 0 3px 14px rgba(224,161,78,0.5); }
+  50% { box-shadow: 0 3px 22px rgba(224,161,78,0.95); }
+}
+/* 在听指示：猫头顶一颗呼吸的小绿点，明确表示"正在听" */
+#mic-dot {
+  position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #46d27a; box-shadow: 0 0 0 0 rgba(70, 210, 122, 0.7);
+  animation: mic-pulse 1.2s ease-out infinite; pointer-events: none;
+}
+@keyframes mic-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(70, 210, 122, 0.65); }
+  70% { box-shadow: 0 0 0 13px rgba(70, 210, 122, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(70, 210, 122, 0); }
 }
 .hidden { display: none !important; }

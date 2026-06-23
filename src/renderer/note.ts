@@ -1,5 +1,6 @@
 import type { Task } from '../shared/types'
 import type { Api } from '../shared/api'
+import { recurLabel } from '../shared/recur'
 
 declare global {
   interface Window {
@@ -31,8 +32,9 @@ function fmtFull(utcMs: number | null): string {
 function statusLabel(s: Task['status']): string {
   return { pending: '待办', done: '已完成', snoozed: '已推迟', expired: '已过期' }[s]
 }
-/** 列表里那一行的时间：事件与提醒不同就两个都显示，否则显示单个时间。 */
+/** 列表里那一行的时间：周期提醒显示重复规则；事件与提醒不同就两个都显示；否则单个时间。 */
 function timesLabel(t: Task): string {
+  if (t.recur) return recurLabel(t.recur)
   const ev = t.eventTimeUtc
   const rem = t.reminderTimeUtc
   if (ev != null && rem != null && ev !== rem) return `提醒 ${fmtShort(rem)} · 事件 ${fmtShort(ev)}`
@@ -77,8 +79,9 @@ function openDetail(t: Task): void {
   $('d-title').textContent = t.title
   $('d-note').textContent = t.note ? t.note : '（无备注）'
   const fired = t.lastFiredAtUtc != null && t.status === 'pending' ? ' · 已提醒' : ''
-  $('d-meta').textContent =
-    `提醒时间　${fmtFull(t.reminderTimeUtc)}\n事件时间　${fmtFull(t.eventTimeUtc)}\n状态　　　${statusLabel(t.status)}${fired}`
+  $('d-meta').textContent = t.recur
+    ? `重复　　　${recurLabel(t.recur)}\n下次提醒　${fmtFull(t.reminderTimeUtc)}\n状态　　　${statusLabel(t.status)}${fired}`
+    : `提醒时间　${fmtFull(t.reminderTimeUtc)}\n事件时间　${fmtFull(t.eventTimeUtc)}\n状态　　　${statusLabel(t.status)}${fired}`
   $<HTMLButtonElement>('d-complete').onclick = async () => {
     await api.completeTask(t.id)
     closeDetail()

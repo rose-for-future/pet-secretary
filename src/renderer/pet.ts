@@ -16,6 +16,7 @@ const HEAD_BASE = './pet/cat_british/head360/'
 const cat = document.getElementById('cat') as HTMLImageElement
 const bubble = document.getElementById('pet-bubble') as HTMLDivElement
 const bubbleText = document.getElementById('pet-bubble-text') as HTMLSpanElement
+const micDot = document.getElementById('mic-dot') as HTMLDivElement
 
 const pad = (n: number): string => String(n).padStart(4, '0')
 
@@ -59,18 +60,55 @@ setInterval(() => {
   }
 }, 1000 / FPS)
 
-// 拖动 vs 点击：移动很小算点击（切换语音），否则算拖动
-let downX = 0
-let downY = 0
+// —— 桌宠容器定位（窗口铺满整屏不动，移动的是猫容器本身）——
+const petEl = document.getElementById('pet') as HTMLDivElement
+const PET_SIZE = 200
+let petX = 0
+let petY = 0
 let dragging = false
+function reportCatPos(): void {
+  // 猫贴容器底部、200×200 → 中心 client 坐标 = (左+宽/2, 上+高-100)
+  api.petCatPos(petX + PET_SIZE / 2, petY + PET_SIZE - 100)
+}
+// 穿透点击：把"猫(+可见气泡)"的可点区域(client 矩形)上报给主进程，由主进程用【全局光标】判断光标是否
+// 在区域内来切换穿透——不依赖 forward 的 mousemove（那在 macOS 不可靠，正是之前点不到猫的原因）。
+function reportHitRect(): void {
+  const c = cat.getBoundingClientRect()
+  let x = c.left, y = c.top, right = c.right, bottom = c.bottom
+  if (!bubble.classList.contains('hidden')) {
+    const b = bubble.getBoundingClientRect()
+    x = Math.min(x, b.left); y = Math.min(y, b.top); right = Math.max(right, b.right); bottom = Math.max(bottom, b.bottom)
+  }
+  api.petHitRect(x, y, right - x, bottom - y)
+}
+function placePet(x: number, y: number): void {
+  petX = Math.max(0, Math.min(window.innerWidth - PET_SIZE, x))
+  petY = Math.max(0, Math.min(window.innerHeight - PET_SIZE, y))
+  petEl.style.left = `${petX}px`
+  petEl.style.top = `${petY}px`
+  reportCatPos()
+  reportHitRect()
+}
+// 初始落在右下角
+placePet(window.innerWidth - PET_SIZE - 20, window.innerHeight - PET_SIZE - 20)
+window.addEventListener('resize', () => placePet(petX, petY))
+// 周期上报可点区域，自动覆盖气泡显隐/猫移动带来的变化（轻量，120ms 一次）。
+setInterval(reportHitRect, 120)
+
+// 拖动 vs 点击：移动很小算点击（切换语音），否则算拖动（移动猫容器）。
 cat.addEventListener('mousedown', (e) => {
   if (e.button !== 0) return
-  downX = e.screenX
-  downY = e.screenY
+  const startX = e.clientX
+  const startY = e.clientY
+  const baseX = petX
+  const baseY = petY
   dragging = false
   api.petDragStart()
   const onMove = (ev: MouseEvent): void => {
-    if (Math.abs(ev.screenX - downX) > 4 || Math.abs(ev.screenY - downY) > 4) dragging = true
+    const dx = ev.clientX - startX
+    const dy = ev.clientY - startY
+    if (Math.abs(dx) > 6 || Math.abs(dy) > 6) dragging = true
+    if (dragging) placePet(baseX + dx, baseY + dy)
   }
   const onUp = (): void => {
     document.removeEventListener('mousemove', onMove)
@@ -102,15 +140,46 @@ function localSpeak(text: string): void {
 speechSynthesis.getVoices()
 
 let bubbleTimer: ReturnType<typeof setTimeout> | undefined
+
+// 闹钟"叮叮"声（best-effort：音频上下文被浏览器挂起时可能不响，但视觉提醒一定在）
+function alarmSound(): void {
+  try {
+    const ctx = ensurePlayCtx()
+    const beep = (at: number): void => {
+      const o = ctx.createOscillator(); const g = ctx.createGain()
+      o.type = 'sine'; o.frequency.value = 880
+      g.gain.setValueAtTime(0.0001, at)
+      g.gain.exponentialRampToValueAtTime(0.2, at + 0.02)
+      g.gain.exponentialRampToValueAtTime(0.0001, at + 0.4)
+      o.connect(g); g.connect(ctx.destination)
+      o.start(at); o.stop(at + 0.42)
+    }
+    const t0 = ctx.currentTime
+    beep(t0); beep(t0 + 0.5) // 叮、叮 两声
+  } catch { /* noop */ }
+}
+
 api.onReminder((p: ReminderPayload) => {
   const text = `${p.title}${p.note ? '，' + p.note : ''}`
-  bubbleText.textContent = text
+  bubbleText.textContent = '提醒：' + text
   bubble.classList.remove('hidden')
-  clearTimeout(bubbleTimer)
-  bubbleTimer = setTimeout(() => bubble.classList.add('hidden'), 10000)
-  localSpeak('提醒你：' + text)
+  bubble.classList.add('reminder')
+  clearTimeout(bubbleTimer) // 提醒气泡常驻，不自动消失，点一下才关
+  alarmSound()
+  // 语音播报由主进程用系统 TTS（say）念，最可靠；这里只负责响铃+气泡
+  setTimeout(() => alarmSound(), 3000) // 3 秒后再响一遍，避免错过
 })
+// 非 macOS 兜底：主进程念不了时让渲染层用浏览器 TTS 念
+api.onPetSpeak((text: string) => localSpeak(text))
+// 点气泡关掉提醒（提醒气泡是常驻的，需要手动关）
+bubble.addEventListener('click', (e) => {
+  e.stopPropagation()
+  bubble.classList.add('hidden')
+  bubble.classList.remove('reminder')
+})
+
 api.onPetBubble((text: string) => {
+  bubble.classList.remove('reminder')
   bubbleText.textContent = text
   bubble.classList.remove('hidden')
   clearTimeout(bubbleTimer)
@@ -120,23 +189,13 @@ api.onPetBubble((text: string) => {
 // ── Click-to-talk (Omni end-to-end) ──────────────────────────────────────────
 let audioCtx: AudioContext | null = null
 let micStream: MediaStream | null = null
-let processor: ScriptProcessorNode | null = null
+let workletNode: AudioWorkletNode | null = null
 let capturing = false
-
-function downsampleTo16k(input: Float32Array, inRate: number): Int16Array {
-  const ratio = inRate / 16000
-  const outLen = Math.floor(input.length / ratio)
-  const out = new Int16Array(outLen)
-  for (let i = 0; i < outLen; i++) {
-    const s = input[Math.floor(i * ratio)]
-    out[i] = Math.max(-1, Math.min(1, s)) * 0x7fff
-  }
-  return out
-}
 
 // —— 播放 Omni 返回的 24kHz PCM16 ——
 let playCtx: AudioContext | null = null
 let playHead = 0
+let playSources: AudioBufferSourceNode[] = [] // 正在排队/播放的回话音频，打断时要全停掉
 // 在用户手势（点猫）里就建好并 resume 播放上下文，否则自动播放策略会让它一直 suspended，
 // 工具调用成功了却听不到声音，用户以为没成。
 function ensurePlayCtx(): AudioContext {
@@ -162,7 +221,16 @@ function playPcm24k(b64: string): void {
     if (playHead < now) playHead = now
     src.start(playHead)
     playHead += buf.duration
+    playSources.push(src)
+    src.onended = (): void => { playSources = playSources.filter((s) => s !== src) }
   } catch { /* noop */ }
+}
+
+// 打断：立刻停掉所有排队/在播的回话音频（用户开口时主进程会触发）。
+function stopPlayback(): void {
+  for (const s of playSources) { try { s.stop() } catch { /* 可能还没真正开播 */ } }
+  playSources = []
+  playHead = 0
 }
 
 async function startListening(): Promise<void> {
@@ -170,23 +238,26 @@ async function startListening(): Promise<void> {
   capturing = true
   bubbleText.textContent = '在听…（再点我一下结束对话）'
   bubble.classList.remove('hidden')
+  micDot.classList.remove('hidden') // 头顶亮起呼吸绿点，明确"正在听"
   clearTimeout(bubbleTimer)
   ensurePlayCtx() // 趁点猫这次手势把播放上下文 resume，回话才出得了声
   try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } })
+    // 开回声消除/降噪：否则猫自己的声音会被麦克风听成"用户在说话"而误触发打断。
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    })
     audioCtx = new AudioContext()
+    // AudioWorklet：采集跑在专用音频线程，延迟更低、不被界面(帧动画/跟随鼠标)卡顿影响。
+    await audioCtx.audioWorklet.addModule('./pcm-worklet.js')
     const sourceNode = audioCtx.createMediaStreamSource(micStream)
-    processor = audioCtx.createScriptProcessor(4096, 1, 1)
-    const inRate = audioCtx.sampleRate
+    workletNode = new AudioWorkletNode(audioCtx, 'pcm-worklet', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] })
     api.voiceStart()
-    processor.onaudioprocess = (e: AudioProcessingEvent): void => {
-      const pcm = downsampleTo16k(e.inputBuffer.getChannelData(0), inRate)
-      api.voicePcm(pcm.buffer.slice(0) as ArrayBuffer)
-    }
-    sourceNode.connect(processor)
-    processor.connect(audioCtx.destination)
+    workletNode.port.onmessage = (e: MessageEvent<ArrayBuffer>): void => { api.voicePcm(e.data) }
+    sourceNode.connect(workletNode)
+    workletNode.connect(audioCtx.destination) // 接到输出以驱动 process()；worklet 不写输出=静音，无回授
   } catch (e) {
     capturing = false
+    micDot.classList.add('hidden')
     bubbleText.textContent = '打不开麦克风喵…'
   }
 }
@@ -194,19 +265,25 @@ async function startListening(): Promise<void> {
 function stopListening(): void {
   if (!capturing) return
   capturing = false
-  try { processor?.disconnect() } catch { /* noop */ }
+  try { workletNode?.disconnect() } catch { /* noop */ }
+  workletNode = null
   try { micStream?.getTracks().forEach((t) => t.stop()) } catch { /* noop */ }
   try { audioCtx?.close() } catch { /* noop */ }
   api.voiceStop()
   bubble.classList.add('hidden')
+  micDot.classList.add('hidden')
 }
 
 api.onCatAudio((b64) => playPcm24k(b64))
+api.onCatStopAudio(() => stopPlayback())
 api.onCatText((t) => {
+  bubble.classList.remove('reminder')
   bubbleText.textContent = t
   bubble.classList.remove('hidden')
   clearTimeout(bubbleTimer)
-  bubbleTimer = setTimeout(() => bubble.classList.add('hidden'), 8000)
+  // 长文字多停一会，够看完整段（短句 ~4.5s，长句最多 14s）。
+  const ms = Math.min(14000, 4500 + t.length * 220)
+  bubbleTimer = setTimeout(() => bubble.classList.add('hidden'), ms)
 })
 api.onVoiceError((m) => {
   bubbleText.textContent = '语音出错喵：' + m

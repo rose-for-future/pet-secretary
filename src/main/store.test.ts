@@ -48,11 +48,22 @@ describe('Store', () => {
     expect(await s.loadTasks()).toEqual([sampleTask('a')])
   })
 
+  test('memories 不存在时返回空，保存后往返一致', async () => {
+    const s = new Store(dir)
+    expect(await s.loadMemories()).toEqual([])
+    const mems = [
+      { id: 'm1', text: '开会习惯提前15分钟提醒', kind: 'preference' as const, createdAt: '2026-06-19T00:00:00.000Z' },
+      { id: 'm2', text: '称呼用户为小李', kind: 'fact' as const, createdAt: '2026-06-19T00:00:00.000Z' }
+    ]
+    await s.saveMemories(mems)
+    expect(await s.loadMemories()).toEqual(mems)
+  })
+
   test('settings 默认值与往返', async () => {
     const s = new Store(dir)
     const def = await s.loadSettings()
     expect(def.defaultLeadMinutes).toBe(0)
-    await s.saveSettings({ defaultLeadMinutes: 20, snoozeMinutes: 5, soundEnabled: false, muted: true })
-    expect(await s.loadSettings()).toEqual({ defaultLeadMinutes: 20, snoozeMinutes: 5, soundEnabled: false, muted: true })
+    await s.saveSettings({ defaultLeadMinutes: 20, snoozeMinutes: 5, soundEnabled: false, muted: true, omniVoice: 'Ethan' })
+    expect(await s.loadSettings()).toEqual({ defaultLeadMinutes: 20, snoozeMinutes: 5, soundEnabled: false, muted: true, omniVoice: 'Ethan' })
   })
 })

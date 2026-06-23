@@ -54,16 +54,20 @@ const LEAD_PATTERNS: Array<{ re: RegExp; extract: (m: RegExpMatchArray) => numbe
  * @returns ParsedWhen with eventTimeUtc and leadMinutes, or null if no date/time found.
  */
 /**
- * 归一化 chrono 处理不好的午夜说法：
+ * 归一化 chrono 处理不好的时间说法：
  *  - 「24点 / 二十四点」表示当天结束 = 次日零点（chrono 直接返回 null）
  *  - 「晚上/今晚/半夜 12点」表示午夜零点（chrono 会误判成中午 12:00）
- * 统一改写成 chrono 认得、且日期正确的「0点 / 明天0点」。
+ *  - 冷门时段词（傍晚/清晨/晌午）chrono 不认，换成它认得的同义词，保证 12 小时制正确换算
  */
-function normalizeMidnight(s: string): string {
+function normalizeTimeWords(s: string): string {
   // 24点：带「今天/今晚」前缀的 = 明天0点；裸「24点」靠 forwardDate 落到下一个 0 点（即明天）
   s = s.replace(/(今天|今晚|今夜|今)?(二十四|二四|24)点/g, (_m, day) => (day ? '明天0点' : '0点'))
   // 夜间 12 点 = 午夜，等于（今晚的）明天 0 点
   s = s.replace(/(今天晚上|今晚|晚上|半夜|夜里)(十二|12)点/g, '明天0点')
+  // 时段词同义替换（chrono 认 下午/早上/中午，不认 傍晚/清晨/晌午）：傍晚6点 → 下午6点 = 18:00
+  s = s.replace(/傍晚/g, '下午')
+  s = s.replace(/(清晨|早晨)/g, '早上')
+  s = s.replace(/晌午/g, '中午')
   return s
 }
 
@@ -72,7 +76,7 @@ export function parseWhen(text: string, nowMs: number, timezone: string): Parsed
   void timezone
 
   let leadMinutes = 0
-  let stripped = normalizeMidnight(text)
+  let stripped = normalizeTimeWords(text)
 
   // Try each lead pattern; use first match found.
   for (const { re, extract } of LEAD_PATTERNS) {

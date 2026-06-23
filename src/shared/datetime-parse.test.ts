@@ -75,6 +75,27 @@ describe('午夜 / 24点 归一化', () => {
   })
 })
 
+describe('时段词 12 小时制换算', () => {
+  // now = 2026-06-18 10:00 CST
+  it('傍晚6点 → 当天 18:00（chrono 本来不认傍晚）', () => {
+    // 2026-06-18 18:00 CST = 2026-06-18T10:00:00Z
+    const r = parseWhen('傍晚6点', now, 'Asia/Shanghai')
+    expect(r).not.toBeNull()
+    expect(r!.eventTimeUtc).toBe(Date.UTC(2026, 5, 18, 10, 0, 0))
+  })
+  it('晚上11点 → 当天 23:00', () => {
+    // 2026-06-18 23:00 CST = 2026-06-18T15:00:00Z
+    const r = parseWhen('晚上11点', now, 'Asia/Shanghai')
+    expect(r).not.toBeNull()
+    expect(r!.eventTimeUtc).toBe(Date.UTC(2026, 5, 18, 15, 0, 0))
+  })
+  it('下午三点 → 当天 15:00', () => {
+    const r = parseWhen('下午三点', now, 'Asia/Shanghai')
+    expect(r).not.toBeNull()
+    expect(r!.eventTimeUtc).toBe(Date.UTC(2026, 5, 18, 7, 0, 0))
+  })
+})
+
 // ─── Lead extraction ──────────────────────────────────────────────────────────
 
 describe('lead extraction', () => {
